@@ -11,7 +11,7 @@ import { jwtDecode } from 'jwt-decode';
 declare const google: any;
 
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = "64490317169-tic18jivb8ijamdg0evo14i1ue3itika.apps.googleusercontent.com";
 
 const GUEST_USER: User = {
   id: 'guest_user_123',
