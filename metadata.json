@@ -1,0 +1,7 @@
+{
+  "name": "Lumina Books - PDF to Audiobook",
+  "description": "Convert your PDF books into high-quality audiobooks using Gemini AI. Supports translation into multiple languages and customizable AI voices.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
