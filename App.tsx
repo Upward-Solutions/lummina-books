@@ -1,13 +1,14 @@
-import React, {useEffect, useState} from 'react';
-import {SUPPORTED_LANGUAGES} from './constants';
-import {VoiceName, ProcessingStatus, Chapter, User, SavedBook} from './types';
-import {identifyChapters, synthesizeChapter} from './services/geminiService';
-import {saveBook, getUserBooks} from './services/storageService';
+import React, { useEffect, useState } from 'react';
+import { SUPPORTED_LANGUAGES } from './constants';
+import { VoiceName, ProcessingStatus, Chapter, User, SavedBook } from './types';
+import { translatorService, ttsService } from './services/serviceFactory';
+import { splitTextIntoChunks } from './services/geminiService';
+import { saveBook, getUserBooks } from './services/storageService';
 import AppHeader from './components/AppHeader';
 import AuthScreen from './components/AuthScreen';
 import BookWorkspace from './components/BookWorkspace';
 import LibraryView from './components/LibraryView';
-import {jwtDecode} from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 // Fix: Declare google global variable for Google Identity Services to resolve "Cannot find name 'google'" errors.
 declare const google: any;
@@ -117,7 +118,7 @@ const App: React.FC = () => {
                 reader.onerror = reject;
             });
             setPdfBase64(b64);
-            const discoveredChapters = await identifyChapters(b64);
+            const discoveredChapters = await translatorService.identifyChapters(b64);
             const initialChapters: Chapter[] = discoveredChapters.map((c) => ({
                 ...c,
                 status: 'idle' as const,
@@ -185,14 +186,14 @@ const App: React.FC = () => {
             if (c.id === chapterId) {
                 return {
                     ...c,
-                    audioParts: c.audioParts?.map((p) => (p.id === partId ? {...p, lastTimestamp: timestamp} : p))
+                    audioParts: c.audioParts?.map((p) => (p.id === partId ? { ...p, lastTimestamp: timestamp } : p))
                 };
             }
             return c;
         });
 
         setChapters(updatedChapters);
-        saveBook({...currentBook, chapters: updatedChapters}).then(() => loadLibrary());
+        saveBook({ ...currentBook, chapters: updatedChapters }).then(() => loadLibrary());
     };
 
     const handleGenerateChapter = async (chapterId: string) => {
@@ -206,9 +207,32 @@ const App: React.FC = () => {
         try {
             const chapter = chapters.find((c) => c.id === chapterId)!;
             const langName = SUPPORTED_LANGUAGES.find((l) => l.code === targetLang)?.name || 'Spanish';
-            const audioParts = await synthesizeChapter(pdfBase64, chapter, langName, selectedVoice, (p) => {
-                setChapters((prev) => prev.map((c) => (c.id === chapterId ? {...c, progress: p} : c)));
-            });
+
+            // 1. Extract & translate the chapter text
+            const setProgress = (p: number) =>
+                setChapters((prev) => prev.map((c) => (c.id === chapterId ? { ...c, progress: p } : c)));
+
+            setProgress(5);
+            const fullText = await translatorService.translateChapter(pdfBase64, chapter, langName);
+
+            // 2. Chunk text and synthesize each part via TTSService
+            const chunks = splitTextIntoChunks(fullText);
+            const audioParts = [];
+
+            for (let i = 0; i < chunks.length; i++) {
+                const startProgress = 10 + (i / chunks.length) * 85;
+                const endProgress = 10 + ((i + 1) / chunks.length) * 85;
+                setProgress(Math.round(startProgress));
+
+                const part = await ttsService.synthesize(
+                    chunks[i],
+                    selectedVoice,
+                    `${chapter.id}-part-${i}`,
+                    chunks.length > 1 ? `Parte ${i + 1}` : 'Audio Completo'
+                );
+                audioParts.push(part);
+                setProgress(Math.round(endProgress));
+            }
 
             const finalChapters: Chapter[] = chapters.map((c) =>
                 c.id === chapterId
@@ -224,7 +248,7 @@ const App: React.FC = () => {
             setChapters(finalChapters);
             const currentBook = library.find((b) => b.id === activeBookId);
             if (currentBook) {
-                await saveBook({...currentBook, chapters: finalChapters});
+                await saveBook({ ...currentBook, chapters: finalChapters });
                 await loadLibrary();
             }
             playSuccessSound();
@@ -258,9 +282,9 @@ const App: React.FC = () => {
 
             <main className="max-w-6xl mx-auto px-4">
                 {!user ? (
-                    <AuthScreen onGuestLogin={handleLoginSuccess} guestUser={GUEST_USER} googleButtonId="googleBtn"/>
+                    <AuthScreen onGuestLogin={handleLoginSuccess} guestUser={GUEST_USER} googleButtonId="googleBtn" />
                 ) : showLibrary ? (
-                    <LibraryView library={library} onSelectBook={handleLoadSavedBook} onAddBook={handleStartNewBook}/>
+                    <LibraryView library={library} onSelectBook={handleLoadSavedBook} onAddBook={handleStartNewBook} />
                 ) : (
                     <BookWorkspace
                         selectedFile={selectedFile}
