@@ -10,10 +10,9 @@ import BookWorkspace from './components/BookWorkspace';
 import LibraryView from './components/LibraryView';
 import { jwtDecode } from 'jwt-decode';
 
-// Fix: Declare google global variable for Google Identity Services to resolve "Cannot find name 'google'" errors.
 declare const google: any;
 
-const GOOGLE_CLIENT_ID = "64490317169-tic18jivb8ijamdg0evo14i1ue3itika.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
 const GUEST_USER: User = {
     id: 'guest_user_123',
