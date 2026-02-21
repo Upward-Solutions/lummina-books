@@ -286,8 +286,8 @@ const App: React.FC = () => {
                     <LibraryView library={library} onSelectBook={handleLoadSavedBook} onAddBook={handleStartNewBook} />
                 ) : (
                     <BookWorkspace
-                        selectedFile={selectedFile}
                         onFileSelect={setSelectedFile}
+                        selectedFile={selectedFile}
                         targetLang={targetLang}
                         onTargetLangChange={setTargetLang}
                         selectedVoice={selectedVoice}
