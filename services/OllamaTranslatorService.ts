@@ -1,9 +1,9 @@
 import { Chapter } from '../types';
 import { TranslatorService } from './TranslatorService';
-import { extractPdfText } from './pdfExtractor';
+import { extractPdfText, extractPdfPages } from './pdfExtractor';
 
 const OLLAMA_BASE_URL = '/api/ollama';
-const MODEL = 'gemma3:12b';
+const MODEL = 'qwen2.5:7b';
 
 // Characters to send to the model per request — stays within context window
 // while keeping latency reasonable for a local model.
@@ -48,22 +48,23 @@ function stripCodeFences(text: string): string {
 
 export class OllamaTranslatorService implements TranslatorService {
     async identifyChapters(pdfBase64: string): Promise<Chapter[]> {
-        const fullText = await extractPdfText(pdfBase64);
-        // Trim to avoid exceeding context limit
-        const trimmedText = fullText.substring(0, MAX_CONTEXT_CHARS);
+        // En lugar de extraer TODO el texto, extraemos por páginas
+        const pages = await extractPdfPages(pdfBase64);
+        
+        // ¡LA MAGIA!: Solo tomamos las primeras 15 páginas para buscar el índice
+        // Esto reduce el texto de 80.000 caracteres a unos 15.000 (ideal para 8GB RAM)
+        const firstPagesText = pages.slice(0, 15).join('\n\n');
 
         const systemPrompt =
             'You are an expert structural analyzer for books. ' +
-            'Your goal is to map the book\'s narrative structure. ' +
-            'Capture every meaningful part written by the author (Preface, Foreword, Introduction, Chapters, Epilogue, Acknowledgments, Appendices) ' +
-            'but exclude utility sections like the Index or Table of Contents. ' +
+            'Your goal is to map the book\'s narrative structure by reading its Table of Contents or initial pages. ' +
             'Output ONLY valid JSON — no markdown, no explanation.';
 
         const userMessage =
-            'Analyze the following book text and return a JSON array. ' +
+            'Analyze the following book opening pages and return a JSON array. ' +
             'Each element must have exactly these fields: "id" (a slug like "chapter-1"), "title" (the section title), "summary" (one sentence). ' +
-            'IMPORTANT: Start your response directly with [ and end with ]. No prose before or after.\n\n' +
-            trimmedText;
+            'IMPORTANT: Start your response directly with [ and end with ].\n\n' +
+            firstPagesText;
 
         const raw = await ollamaChat(systemPrompt, userMessage);
         const clean = stripCodeFences(raw);
