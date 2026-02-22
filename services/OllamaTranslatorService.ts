@@ -2,7 +2,7 @@ import { Chapter } from '../types';
 import { TranslatorService } from './TranslatorService';
 import { extractPdfText } from './pdfExtractor';
 
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'kokoro-fastapi-cpu.railway.internal';
+const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL;
 const MODEL = 'gemma3:12b';
 
 // Characters to send to the model per request — stays within context window
