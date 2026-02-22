@@ -1,10 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
-
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 // Point to the bundled PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url,
-).toString();
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 /**
  * Extracts the full text of a PDF (all pages concatenated) from a base64 string.
